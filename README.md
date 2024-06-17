@@ -1,2 +1,2 @@
-# Daily-Bike-Rental-Forecast
-Here I used time series models and interactive plotting to forecast a new year of data.
+# Forecast daily bike rental demand using time series models
+This dataset contains the daily count of rental bike transactions between years 2011 and 2012 in Capital bikeshare system with the corresponding weather and seasonal information. Here I used time series models and interactive plotting to forecast a new year of data. We shall be conducting our analysis using a time series model due to the large amount of factors that could be contributing to the vairations in data, thus a time series model is our best approach to this problematic.
