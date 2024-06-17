@@ -1,0 +1,158 @@
+---
+title: "Forecast daily bike rental demand using time series models"
+author: "Alberto J. Montiel"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# About Data Analysis Report
+
+This RMarkdown file contains the report of the data analysis done for the project on forecasting daily bike rental demand using time series models in R. It contains analysis such as data exploration, summary statistics and building the time series models. The final report was completed on `r date()`. 
+
+**Data Description:**
+
+This dataset contains the daily count of rental bike transactions between years 2011 and 2012 in Capital bikeshare system with the corresponding weather and seasonal information.
+
+**Data Source:** https://archive.ics.uci.edu/ml/datasets/bike+sharing+dataset
+
+**Relevant Paper:** 
+
+Fanaee-T, Hadi, and Gama, Joao, 'Event labeling combining ensemble detectors and background knowledge', Progress in Artificial Intelligence (2013): pp. 1-15, Springer Berlin Heidelberg
+
+
+
+
+## Setting up our environment loading up the required packages
+
+We initialize loading the libraries needed to conduct our analysis, including proper ones used for cleaning, transforming, visualizing and analyzing the data.
+
+```{r}
+## Import required packages
+library(readr)
+library(dplyr)
+library(tidyverse)
+library(plotly)
+library(forecast)
+
+# Load the data
+bikeday <- read_csv("bike_day_rental.csv")
+```
+
+
+##Describing and visualizing the data
+We shall initialize our analysis by visualizing our data.
+
+```{r}
+View(bikeday)
+```
+
+
+
+
+After taking a glimpse into the dataset, we are able to see there are several factors being referenced here, all of these which could be potential causes as to why demand fluctuates from time to time. 
+
+Since the factors to analyze would be too many for a simple regression, or multiple regression model, we opt to proceed instead with a time series model, taking only into consideration the demand, in this case the column shown as "cnt" and the date, shown as "dteday".
+
+Let's go ahead and graph only these 2 factors we shall be conducting our analysis with, ahead:
+
+```{r}
+ggplot(bikeday, aes(x = as.Date(dteday), y = cnt)) +
+  geom_line() +
+  labs(title = "Daily Bike Rentals", x = "Date", y = "Count")
+```
+
+What we can analyze in this graph is a sort of bounce in the demand for bicycles rising from january to july and then dropping back down onwards to december. This shows us the highest time of demand is around the the second trimester of the year (T2).
+
+
+
+
+# Creating an interactive time series plot for more specific analysis
+
+```{r}
+p <- ggplot(bikeday, aes(x = as.Date(dteday), y = cnt)) +
+  geom_line() +
+  labs(title = "Daily Bike Rentals", x = "Date", y = "Count")
+
+ggplotly(p)
+```
+Through this interactive plot we were able to create with the assistance of the "plotly" library, we can run our cursor around the plot and select key points we want to view.
+
+
+
+
+# Smoothing our time series data
+We want to smooth our data now to ease our analysis and help towards a more effective forecast analysis.
+
+```{r warning=FALSE}
+bikeday <- bikeday %>%
+  mutate(cnt_smooth = zoo::rollmean(cnt, k = 7, fill = NA))
+
+ggplot(bikeday, aes(x = as.Date(dteday))) +
+  geom_line(aes(y = cnt), color = "blue") +
+  geom_line(aes(y = cnt_smooth), color = "green") +
+  labs(title = "Daily Bike Rentals (Smoothed)", x = "Date", y = "Count")
+```
+
+
+
+# Decomposing and accessing the stationarity of time series data
+By decomposing our data, this helps to isolate and understand its underlying components like trend, seasonality, and noise, making it easier to model and forecast accurately.
+
+Assessing the stationarity of time series data ensures its statistical properties remain consistent over time, which is crucial for applying reliable forecasting models and interpreting data trends effectively.
+
+```{r}
+# Convert to time series object
+bikeday_ts <- ts(bikeday$cnt, start = c(2011, 1), frequency = 365)
+
+# Decompose the time series
+bikeday_decomp <- decompose(bikeday_ts)
+
+# Plot decomposition
+plot(bikeday_decomp)
+```
+
+
+
+# Fitting and forecasting time series data using ARIMA models
+R has many tools to our disposition when it comes to statistics, in this case we will be making use of the ARIMA (Autoregressive Integrated Moving Average) functions to our availability. And we shall also put into good the use the "Forecast" library as well.
+
+```{r}
+bikeday_model <- auto.arima(bikeday_ts, ic = "aic", trace = TRUE)
+
+# Print model summary
+summary(bikeday_model)
+bikeday_forecast <- forecast(bikeday_model, h = 365)
+
+# Plot the forecast
+plot(bikeday_forecast)
+```
+
+In the plot we are able to see, colored in blue, the forecast for the next year in bike demand. This includes any major/minor variation to the forecasted number and will help as a starting point for inventory, availability and more.
+
+
+# Findings and Conclusions
+
+*Findings:*
+
+* Trends: The data shows a general upward trend in bike rentals over time.
+* Seasonality: There is noticeable seasonality, with higher rentals during certain times of the year.
+* Stationarity: The data was not stationary initially but was made stationary after differencing.
+* Model: The ARIMA model provided a good fit, capturing both trend and seasonal patterns.
+* Forecast: The forecast suggests a continuation of the upward trend with some seasonal fluctuations.
+
+*Conclusions:*
+
+* Increasing Demand: The increasing trend suggests growing demand for bike rentals, potentially driven by increased awareness and infrastructure improvements.
+* Seasonal Peaks: Seasonal peaks indicate higher usage during warmer months or holidays, which can be leveraged for targeted promotions.
+* Actionable Insights: The forecast can help in planning resources and managing inventory to meet future demand.
+
+
+# Additional Resources
+
+* Fanaee-T,Hadi. (2013). Bike Sharing. UCI Machine Learning Repository. https://doi.org/10.24432/C5W894.
+* Simple SPSS. “Time Series Analysis-ARIMA Model using R software: A step by step approach”. YouTube, uploaded by Simple SPSS (March 3rd, 2020). https://www.youtube.com/watch?v=VPhyVSJMbpA
+* Riaz, K. (December 31st, 2017). ARIMA model for forecasting- Example in R. Obtained from RPubs by RStudio: https://rpubs.com/riazakhan94/arima_with_example
+* Murray R. Spiegel, Estadistica, 2a. edición, Mc Graw Hill
+* Lind, D., Marchal, W. & Mason, R.(2004). Estadística para Administración y Economía (11va edición) México: Alfa Omega Grupo Editor.
